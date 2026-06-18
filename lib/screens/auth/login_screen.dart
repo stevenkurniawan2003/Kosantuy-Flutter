@@ -1,8 +1,14 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'register_screen.dart';
+import 'package:http/http.dart' as http;
+
 import '../user/home_screen.dart';
 import '../owner/owner_screen.dart';
+import 'register_screen.dart';
+import '../../utils/api.dart';
+import '../../utils/user_session.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,58 +18,75 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  bool _obscurePassword = true;
+  final emailController = TextEditingController();
 
-  final TextEditingController emailController =
-      TextEditingController();
+  final passwordController = TextEditingController();
 
-  final TextEditingController passwordController =
-      TextEditingController();
+  bool isPasswordVisible = false;
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-void login() {
-  // USER
-  if (emailController.text ==
-          "user@kosantuy.com" &&
-      passwordController.text ==
-          "12345678") {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            const HomeScreen(),
-      ),
-    );
-  }
-  // OWNER
-  else if (emailController.text ==
-          "owner@kosantuy.com" &&
-      passwordController.text ==
-          "12345678") {
+  Future<void> login() async {
+    try {
+      final response = await http.post(
+        Api.endpoint(
+          'auth/login.php',
+        ),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": emailController.text,
+          "password": passwordController.text,
+        }),
+      );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            const OwnerScreen(),
-      ),
-    );
+      final data = jsonDecode(response.body);
+
+      if (data["success"] == true) {
+        // SIMPAN DATA USER KE SESSION
+        UserSession.id = int.parse(
+          data["data"]["id"].toString(),
+        );
+
+        UserSession.nama = data["data"]["nama"];
+
+        UserSession.email = data["data"]["email"];
+
+        UserSession.role = data["data"]["role"];
+
+        String role = data["data"]["role"];
+
+        if (role == "owner") {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const OwnerScreen(),
+            ),
+          );
+        } else {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const HomeScreen(),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              data["message"],
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Error: $e"),
+        ),
+      );
+    }
   }
-  else {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(
-      const SnackBar(
-        content:
-            Text("Email atau Password Salah"),
-      ),
-    );
-  }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +101,6 @@ void login() {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 40),
-
               Center(
                 child: Icon(
                   Icons.home_work_rounded,
@@ -86,9 +108,7 @@ void login() {
                   color: Colors.blue.shade700,
                 ),
               ),
-
               const SizedBox(height: 20),
-
               Text(
                 "Selamat Datang 👋",
                 style: GoogleFonts.poppins(
@@ -96,38 +116,30 @@ void login() {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 8),
-
               Text(
                 "Masuk untuk menemukan kos impianmu",
                 style: GoogleFonts.poppins(
                   color: Colors.grey,
                 ),
               ),
-
               const SizedBox(height: 40),
-
               TextField(
                 controller: emailController,
-                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   hintText: "Email",
                   prefixIcon: const Icon(
                     Icons.email_outlined,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
               ),
-
               const SizedBox(height: 20),
-
               TextField(
                 controller: passwordController,
-                obscureText: _obscurePassword,
+                obscureText: !isPasswordVisible,
                 decoration: InputDecoration(
                   hintText: "Password",
                   prefixIcon: const Icon(
@@ -135,40 +147,31 @@ void login() {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off
-                          : Icons.visibility,
+                      isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                     ),
                     onPressed: () {
                       setState(() {
-                        _obscurePassword =
-                            !_obscurePassword;
+                        isPasswordVisible = !isPasswordVisible;
                       });
                     },
                   ),
                   border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(15),
                   ),
                 ),
               ),
-
               const SizedBox(height: 30),
-
               SizedBox(
                 width: double.infinity,
                 height: 55,
                 child: ElevatedButton(
                   onPressed: login,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        Colors.blue.shade700,
-                    shape:
-                        RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(
-                        15,
-                      ),
+                    backgroundColor: Colors.blue.shade700,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15),
                     ),
                   ),
                   child: Text(
@@ -176,18 +179,14 @@ void login() {
                     style: GoogleFonts.poppins(
                       fontSize: 16,
                       color: Colors.white,
-                      fontWeight:
-                          FontWeight.w600,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-
               const SizedBox(height: 25),
-
               Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     "Belum punya akun?",
@@ -198,22 +197,20 @@ void login() {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              const RegisterScreen(),
+                          builder: (_) => const RegisterScreen(),
                         ),
                       );
                     },
                     child: Text(
                       "Daftar",
                       style: GoogleFonts.poppins(
-                        fontWeight:
-                            FontWeight.bold,
+                        fontWeight: FontWeight.bold,
                         color: Colors.blue,
                       ),
                     ),
                   ),
                 ],
-              ),
+              )
             ],
           ),
         ),
@@ -221,3 +218,4 @@ void login() {
     );
   }
 }
+

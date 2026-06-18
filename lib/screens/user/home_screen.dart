@@ -5,7 +5,8 @@ import 'nearby_screen.dart';
 import 'bookmark_screen.dart';
 import 'detail_kos_screen.dart';
 import 'chat_screen.dart';
-import '../auth/login_screen.dart';
+// import '../auth/login_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -24,7 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const SearchScreen(),
       const NearbyScreen(),
       const BookmarkScreen(),
-      _buildProfilePage(),
+      const ProfileScreen(),
     ];
 
     return Scaffold(
@@ -121,113 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 20),
 
           _buildKosCard(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProfilePage() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profil"),
-      ),
-      body: Column(
-        children: [
-          const SizedBox(height: 30),
-
-          const CircleAvatar(
-            radius: 50,
-            child: Icon(
-              Icons.person,
-              size: 50,
-            ),
-          ),
-
-          const SizedBox(height: 15),
-
-          Text(
-            "Admin Kosantuy",
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-
-          Text(
-            "admin@kosantuy.com",
-            style: GoogleFonts.poppins(),
-          ),
-
-          const SizedBox(height: 30),
-
-          ListTile(
-            leading: const Icon(Icons.edit),
-            title: const Text("Edit Profil"),
-            onTap: () {},
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.history),
-            title: const Text("Riwayat Survey"),
-            onTap: () {},
-          ),
-
-          ListTile(
-            leading: const Icon(
-              Icons.logout,
-              color: Colors.red,
-            ),
-            title: const Text(
-              "Logout",
-              style: TextStyle(
-                color: Colors.red,
-              ),
-            ),
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    title: const Text("Logout"),
-                    content: const Text(
-                      "Apakah Anda yakin ingin logout?",
-                    ),
-                    actions: [
-
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Text("Batal"),
-                      ),
-
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        onPressed: () {
-                          Navigator.pushAndRemoveUntil(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  const LoginScreen(),
-                            ),
-                            (route) => false,
-                          );
-                        },
-                        child: const Text(
-                          "Logout",
-                          style: TextStyle(
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                },
-              );
-            },
-          ),
         ],
       ),
     );

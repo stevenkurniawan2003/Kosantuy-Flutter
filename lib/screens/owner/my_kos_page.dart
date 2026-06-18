@@ -1,240 +1,322 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
+import '../../utils/api.dart';
+import '../../utils/user_session.dart';
 import 'edit_kos.dart';
 
-class MyKosPage extends StatelessWidget {
+class MyKosPage extends StatefulWidget {
   const MyKosPage({super.key});
 
   @override
+  State<MyKosPage> createState() => _MyKosPageState();
+}
+
+class _MyKosPageState extends State<MyKosPage> {
+  List kosList = [];
+
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    getKosSaya();
+  }
+
+  Future<void> deleteKos(int id) async {
+    try {
+      final response = await http.post(
+        Api.endpoint(
+          'kos/delete_kos.php',
+        ),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "id": id,
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            data["message"],
+          ),
+        ),
+      );
+
+      if (data["success"] == true) {
+        getKosSaya();
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "Error : $e",
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> showDeleteDialog(int id) async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text(
+            "Hapus Kos",
+          ),
+          content: const Text(
+            "Yakin ingin menghapus kos ini?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Batal",
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              onPressed: () {
+                Navigator.pop(context);
+
+                deleteKos(id);
+              },
+              child: const Text(
+                "Hapus",
+                style: TextStyle(
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> getKosSaya() async {
+    try {
+      final response = await http.get(
+        Api.endpoint(
+          'kos/my_kos.php',
+          {
+            'owner_id': UserSession.id.toString(),
+          },
+        ),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (data["success"] == true) {
+        setState(() {
+          kosList = data["data"];
+
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print(e);
+
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-
-    final kosList = [
-      {
-        "nama": "Kos Putri Melati",
-        "harga": "Rp 750.000",
-        "status": "8 Kamar Tersedia",
-        "rating": "4.8",
-        "gambar":
-            "https://picsum.photos/500/601"
-      },
-      {
-        "nama": "Kos Mawar",
-        "harga": "Rp 650.000",
-        "status": "3 Kamar Tersedia",
-        "rating": "4.7",
-        "gambar":
-            "https://picsum.photos/500/602"
-      },
-      {
-        "nama": "Kos Sakura",
-        "harga": "Rp 1.200.000",
-        "status": "Penuh",
-        "rating": "5.0",
-        "gambar":
-            "https://picsum.photos/500/603"
-      },
-    ];
-
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Kos Saya"),
+        title: const Text(
+          "Kos Saya",
+        ),
       ),
-
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: kosList.length,
-        itemBuilder: (context, index) {
-
-          final kos = kosList[index];
-
-          return Card(
-            margin:
-                const EdgeInsets.only(
-              bottom: 20,
-            ),
-            elevation: 4,
-            shape:
-                RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(20),
-            ),
-            child: Column(
-              crossAxisAlignment:
-                  CrossAxisAlignment.start,
-              children: [
-
-                ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(
-                    top:
-                        Radius.circular(20),
+      body: isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : kosList.isEmpty
+              ? const Center(
+                  child: Text(
+                    "Belum ada kos",
                   ),
-                  child: Image.network(
-                    kos["gambar"]!,
-                    height: 200,
-                    width:
-                        double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: kosList.length,
+                  itemBuilder: (context, index) {
+                    final kos = kosList[index];
 
-                Padding(
-                  padding:
-                      const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment
-                            .start,
-                    children: [
+                    int kamarTersedia = int.tryParse(
+                          kos["kamar_tersedia"].toString(),
+                        ) ??
+                        0;
 
-                      Text(
-                        kos["nama"]!,
-                        style:
-                            const TextStyle(
-                          fontSize: 20,
-                          fontWeight:
-                              FontWeight.bold,
-                        ),
+                    return Card(
+                      margin: const EdgeInsets.only(
+                        bottom: 20,
                       ),
-
-                      const SizedBox(
-                          height: 8),
-
-                      Text(
-                        kos["harga"]!,
-                        style:
-                            const TextStyle(
-                          fontSize: 16,
-                          color:
-                              Colors.blue,
-                          fontWeight:
-                              FontWeight
-                                  .bold,
-                        ),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
                       ),
-
-                      const SizedBox(
-                          height: 8),
-
-                      Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                            child: 
+                            Image.network(
+                              "${Api.baseUrl}/uploads/${kos["foto"]}",
 
-                          const Icon(
-                            Icons.star,
-                            color:
-                                Colors.amber,
-                          ),
+                              height: 200,
 
-                          const SizedBox(
-                              width: 5),
+                              width: double.infinity,
 
-                          Text(
-                            kos["rating"]!,
-                          ),
-                        ],
-                      ),
+                              fit: BoxFit.cover,
 
-                      const SizedBox(
-                          height: 8),
+                              errorBuilder:
+                                  (context,error,stackTrace){
 
-                      Container(
-                        padding:
-                            const EdgeInsets
-                                .symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration:
-                            BoxDecoration(
-                          color: kos[
-                                      "status"] ==
-                                  "Penuh"
-                              ? Colors.red
-                                  .shade100
-                              : Colors.green
-                                  .shade100,
-                          borderRadius:
-                              BorderRadius
-                                  .circular(
-                                      20),
-                        ),
-                        child: Text(
-                          kos["status"]!,
-                        ),
-                      ),
+                                print("ERROR GAMBAR:");
+                                print(error);
 
-                      const SizedBox(
-                          height: 15),
+                                return Container(
 
-                      Row(
-                        children: [
+                                  height: 200,
 
-                          Expanded(
-                            child:
-                                OutlinedButton
-                                    .icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const EditKosPage(),
+                                  color: Colors.red.shade100,
+
+                                  child: Center(
+
+                                    child: Text(
+                                      error.toString(),
+                                      textAlign: TextAlign.center,
+                                    ),
                                   ),
                                 );
                               },
-                              icon:
-                                  const Icon(
-                                Icons.edit,
-                              ),
-                              label:
-                                  const Text(
-                                "Edit",
-                              ),
                             ),
                           ),
-
-                          const SizedBox(
-                              width: 10),
-
-                          Expanded(
-                            child:
-                                ElevatedButton
-                                    .icon(
-                              style:
-                                  ElevatedButton
-                                      .styleFrom(
-                                backgroundColor:
-                                    Colors
-                                        .red,
-                              ),
-                              onPressed:
-                                  () {},
-                              icon:
-                                  const Icon(
-                                Icons.delete,
-                                color: Colors
-                                    .white,
-                              ),
-                              label:
-                                  const Text(
-                                "Hapus",
-                                style:
-                                    TextStyle(
-                                  color: Colors
-                                      .white,
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  kos["nama_kos"],
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Rp ${kos["harga"]}",
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "Jumlah Kamar : ${kos["jumlah_kamar"]}",
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: kamarTersedia == 0
+                                        ? Colors.red.shade100
+                                        : Colors.green.shade100,
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
+                                    kamarTersedia == 0
+                                        ? "Penuh"
+                                        : "$kamarTersedia Kamar Tersedia",
+                                  ),
+                                ),
+                                const SizedBox(height: 15),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () async {
+                                          final result =
+                                              await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => EditKosPage(
+                                                kos: kos,
+                                              ),
+                                            ),
+                                          );
+
+                                          if (result == true) {
+                                            getKosSaya();
+                                          }
+                                        },
+                                        icon: const Icon(
+                                          Icons.edit,
+                                        ),
+                                        label: const Text(
+                                          "Edit",
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.red,
+                                        ),
+                                        onPressed: () {
+                                          showDeleteDialog(
+                                            int.parse(
+                                              kos["id"].toString(),
+                                            ),
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.delete,
+                                          color: Colors.white,
+                                        ),
+                                        label: const Text(
+                                          "Hapus",
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              ],
                             ),
                           ),
                         ],
-                      )
-                    ],
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
-          );
-        },
-      ),
     );
   }
 }
